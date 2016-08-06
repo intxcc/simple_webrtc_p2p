@@ -12,6 +12,10 @@ class WSControl {
 		this.debug = debug;
 		this.pc = pc;
 
+		this.socket.on("init", (data) => {
+			this.socket.emit("init", {"id": this.id});
+		});
+
 		this.socket.on("offer", (data) => {
 			this.onoffer(data);
 		});
@@ -27,7 +31,7 @@ class WSControl {
 
 	onoffer(data) {
 		if (this.debug) {
-			console.debug("Socket: offer");
+			console.debug("Socket: offer from " + data.id);
 		}
 
 		this.rid = data.id;
@@ -42,9 +46,10 @@ class WSControl {
 
 	onanswer(data) {
 		if (this.debug) {
-			console.debug("Socket: answer");
+			console.debug("Socket: answer from " + data.id);
 		}
 
+		this.rid = data.id;
 		this.pc.setRemoteDescription(data.sdp);
 	}
 
@@ -62,11 +67,12 @@ class WSControl {
 			label: event.candidate.sdpMLineIndex,
 			id: event.candidate.sdpMid,
 			candidate: event.candidate.candidate,
+			cid: this.id,
 			rid: this.rid});
 	}
 
-	emitOffer(sdp) {
-		this.socket.emit("offer", {"sdp": sdp, "id": this.id});
+	emitOffer(sdp, remoteid) {
+		this.socket.emit("offer", {"sdp": sdp, "id": this.id, "rid": remoteid});
 	}
 }
 
@@ -109,7 +115,7 @@ class RTConnect {
 		}
 	}
 
-	openConnection() {
+	openConnection(remoteid) {
 		this.dataChannel = this.pc.createDataChannel("sendDataChannel");
 		this.handleOnDataChannel();
 
@@ -119,7 +125,7 @@ class RTConnect {
 			}
 
 			this.pc.setLocalDescription(sdp);
-			this.wscontrol.emitOffer(sdp);
+			this.wscontrol.emitOffer(sdp, remoteid);
 		});
 	}
 
